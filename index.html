@@ -514,7 +514,7 @@ document.querySelectorAll('#loco-pills .pill').forEach(p => {
     el.addEventListener('blur', function() { deactivate(el); });
 
     el.addEventListener('keydown', function(e) {
-      if (activeField !== el) return;
+      if (activeField !== el) activate(el);
       const cur = getVal(el);
 
       if (e.key === 'Tab') { deactivate(el); return; }
@@ -542,6 +542,14 @@ document.querySelectorAll('#loco-pills .pill').forEach(p => {
         e.preventDefault(); return;
       }
     });
+  });
+
+  // Global keydown — send to active field even if focus drifted
+  document.addEventListener('keydown', function(e) {
+    if (!activeField) return;
+    if (document.activeElement !== activeField) activeField.focus();
+    activeField.dispatchEvent(new KeyboardEvent('keydown', {key: e.key, bubbles: false}));
+    if (['Backspace','Enter','Tab'].includes(e.key) || /^[0-9.]$/.test(e.key)) e.preventDefault();
   });
 
   // Click outside deactivates
