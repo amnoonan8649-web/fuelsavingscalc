@@ -152,7 +152,7 @@
   .prefix { border-right: none; border-radius: 3px 0 0 3px; }
   .suffix { border-left: none; border-radius: 0 3px 3px 0; }
 
-  input[type="text"], input[type="email"], input[type="tel"] {
+  input[type="text"] {
     width: 100%;
     background: rgba(255,255,255,0.04);
     border: 1px solid var(--border);
@@ -167,42 +167,10 @@
     transition: border-color 0.15s;
     -moz-appearance: textfield;
   }
-  input[type="text"]:focus, input[type="email"]:focus, input[type="tel"]:focus { border-color: var(--red); }
+  input[type="text"]::-webkit-inner-spin-button,
+  input[type="text"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  input[type="text"]:focus { border-color: var(--red); }
   .prefix + input[type="text"] { border-radius: 0 3px 3px 0; border-left: none; }
-
-  /* Custom numeric div input */
-  .num-input {
-    width: 100%;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    color: var(--text);
-    font-family: 'Barlow', sans-serif;
-    font-size: 16px;
-    font-weight: 500;
-    padding: 8px 12px;
-    height: 38px;
-    outline: none;
-    transition: border-color 0.15s;
-    cursor: text;
-    display: flex;
-    align-items: center;
-    box-sizing: border-box;
-    user-select: none;
-    position: relative;
-  }
-  .num-input.active { border-color: var(--red); }
-  .num-input .cursor {
-    display: inline-block;
-    width: 2px;
-    height: 1em;
-    background: var(--red);
-    margin-left: 1px;
-    animation: blink 1s step-end infinite;
-    vertical-align: middle;
-  }
-  .prefix + .num-input { border-radius: 0 3px 3px 0; border-left: none; }
-  @keyframes blink { 50% { opacity: 0; } }
   .field .hint { display: none; }
 
   hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
@@ -365,11 +333,11 @@
     <div class="input-grid" style="margin-bottom:0;">
       <div class="field">
         <label>Idle fuel usage (gal/hr)</label>
-        <div class="num-input" id="custom-gph" data-value="5.0" tabindex="0">5.0</div>
+        <input type="text" inputmode="numeric" id="custom-gph" value="5.0" min="0.5" max="30" step="0.5">
       </div>
       <div class="field">
         <label>Hybrid unit power draw (kW)</label>
-        <div class="num-input" id="custom-kw" data-value="1" tabindex="0">1</div>
+        <input type="text" inputmode="numeric" id="custom-kw" value="1" min="0.1" max="200" step="0.5">
       </div>
     </div>
   </div>
@@ -378,25 +346,25 @@
   <div class="input-grid">
     <div class="field">
       <label>Number of locomotives</label>
-      <div class="num-input" id="fleet" data-value="1" tabindex="0">1</div>
+      <input type="text" inputmode="numeric" id="fleet" value="1" min="1" max="1000" step="1">
       <div class="hint">Total fleet size</div>
     </div>
     <div class="field">
       <label>Fuel cost per gallon</label>
-      <div class="input-row"><div class="prefix">$</div><div class="num-input" id="fuel-cost" data-value="4.20" tabindex="0">4.20</div></div>
+      <div class="input-row"><div class="prefix">$</div><input type="text" inputmode="numeric" id="fuel-cost" value="4.20" min="1" max="20" step="0.05"></div>
     </div>
     <div class="field">
       <label>Electricity cost (per kWh)</label>
-      <div class="input-row"><div class="prefix">$</div><div class="num-input" id="elec-cost" data-value="0.10" tabindex="0">0.10</div></div>
+      <div class="input-row"><div class="prefix">$</div><input type="text" inputmode="numeric" id="elec-cost" value="0.10" min="0.01" max="1" step="0.01"></div>
     </div>
     <div class="field">
       <label>Idling hours per week</label>
-      <div class="num-input" id="idle-hours" data-value="40" tabindex="0">40</div>
+      <input type="text" inputmode="numeric" id="idle-hours" value="40" min="1" max="168" step="1">
       <div class="hint">Hours engine idles rather than shutting down</div>
     </div>
     <div class="field">
       <label>Weeks per year idling required</label>
-      <div class="num-input" id="idle-weeks" data-value="30" tabindex="0">30</div>
+      <input type="text" inputmode="numeric" id="idle-weeks" value="30" min="1" max="52" step="1">
       <div class="hint">e.g. winter heating season, yard operations</div>
     </div>
   </div>
@@ -474,91 +442,10 @@ document.querySelectorAll('#loco-pills .pill').forEach(p => {
     calc();
   });
 });
-// Custom numeric div input handler
-(function() {
-  const numFields = ['fleet','fuel-cost','elec-cost','idle-hours','idle-weeks','custom-gph','custom-kw'];
-  let activeField = null;
-
-  function getVal(el) { return el.dataset.value || '0'; }
-  function setVal(el, v) {
-    el.dataset.value = v;
-    // Show value + cursor if active
-    if (activeField === el) {
-      el.innerHTML = v + '<span class="cursor"></span>';
-    } else {
-      el.textContent = v;
-    }
-    calc();
-  }
-
-  function activate(el) {
-    if (activeField && activeField !== el) deactivate(activeField);
-    activeField = el;
-    el.classList.add('active');
-    el.innerHTML = getVal(el) + '<span class="cursor"></span>';
-    el.focus();
-  }
-
-  function deactivate(el) {
-    el.classList.remove('active');
-    el.textContent = getVal(el);
-    if (activeField === el) activeField = null;
-  }
-
-  numFields.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-
-    el.addEventListener('click', function(e) { activate(el); });
-    el.addEventListener('focus', function() { activate(el); });
-    el.addEventListener('blur', function() { deactivate(el); });
-
-    el.addEventListener('keydown', function(e) {
-      if (activeField !== el) activate(el);
-      const cur = getVal(el);
-
-      if (e.key === 'Tab') { deactivate(el); return; }
-      if (e.key === 'Enter') {
-        deactivate(el);
-        // Move to next field
-        const idx = numFields.indexOf(id);
-        if (idx < numFields.length - 1) {
-          const next = document.getElementById(numFields[idx+1]);
-          if (next) { setTimeout(() => activate(next), 10); }
-        }
-        e.preventDefault(); return;
-      }
-      if (e.key === 'Backspace') {
-        setVal(el, cur.length > 1 ? cur.slice(0, -1) : '0');
-        e.preventDefault(); return;
-      }
-      if (/^[0-9]$/.test(e.key)) {
-        const next = cur === '0' ? e.key : cur + e.key;
-        setVal(el, next);
-        e.preventDefault(); return;
-      }
-      if (e.key === '.' && !cur.includes('.')) {
-        setVal(el, cur + '.');
-        e.preventDefault(); return;
-      }
-    });
-  });
-
-  // Global keydown — send to active field even if focus drifted
-  document.addEventListener('keydown', function(e) {
-    if (!activeField) return;
-    if (document.activeElement !== activeField) activeField.focus();
-    activeField.dispatchEvent(new KeyboardEvent('keydown', {key: e.key, bubbles: false}));
-    if (['Backspace','Enter','Tab'].includes(e.key) || /^[0-9.]$/.test(e.key)) e.preventDefault();
-  });
-
-  // Click outside deactivates
-  document.addEventListener('click', function(e) {
-    if (activeField && !activeField.contains(e.target)) {
-      deactivate(activeField);
-    }
-  });
-})();
+['fleet','fuel-cost','elec-cost','idle-hours','idle-weeks','custom-gph','custom-kw'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', calc);
+});
 function fmtM(n) {
   const abs = Math.abs(n), sign = n < 0 ? '-' : '';
   if (abs >= 1e6) return sign + '$' + (abs/1e6).toFixed(2) + 'M';
@@ -577,15 +464,14 @@ function calc() {
   const activePill = document.querySelector('#loco-pills .pill.active');
   let gph, kw;
   if (activePill && activePill.dataset.gph === '0') {
-    gph = parseFloat((document.getElementById('custom-gph').dataset||{}).value || document.getElementById('custom-gph').value) || 5;
-    kw  = parseFloat((document.getElementById('custom-kw').dataset||{}).value || document.getElementById('custom-kw').value) || 20;
+    gph = parseFloat(document.getElementById('custom-gph').value) || 5;
+    kw  = parseFloat(document.getElementById('custom-kw').value) || 20;
   } else { gph = locoData.gph; kw = locoData.kw; }
-  const getN = id => { const el = document.getElementById(id); return el ? (parseFloat(el.dataset ? el.dataset.value : el.value) || 0) : 0; };
-  const fleet    = Math.max(1, parseInt(getN('fleet')) || 1);
-  const fuelCost = getN('fuel-cost') || 4.20;
-  const elecCost = getN('elec-cost') || 0.10;
-  const idleHrs  = getN('idle-hours') || 40;
-  const idleWks  = getN('idle-weeks') || 30;
+  const fleet    = Math.max(1, parseInt(document.getElementById('fleet').value) || 1);
+  const fuelCost = parseFloat(document.getElementById('fuel-cost').value) || 4.20;
+  const elecCost = parseFloat(document.getElementById('elec-cost').value) || 0.10;
+  const idleHrs  = parseFloat(document.getElementById('idle-hours').value) || 40;
+  const idleWks  = parseFloat(document.getElementById('idle-weeks').value) || 30;
   const locoType = activePill ? activePill.textContent.trim() : 'Custom';
   const totalHrs      = idleHrs * idleWks;
   const dieselGal     = gph * totalHrs;
@@ -732,39 +618,18 @@ calc();
 </script>
 
 <script>
+// Select all text when field is focused so user just types to replace
+document.addEventListener('DOMContentLoaded', function() {
+  var fields = document.querySelectorAll('input[inputmode="numeric"]');
+  fields.forEach(function(el) {
+    el.addEventListener('focus', function() {
+      var self = this;
+      setTimeout(function() { self.select(); }, 50);
+    });
+  });
 
-// Filter non-numeric keystrokes on calculator input fields
-document.addEventListener('keydown', function(e) {
-  var el = e.target;
-  if (el.tagName === 'INPUT' && el.type === 'text' && el.inputMode === 'decimal') {
-    var allowed = ['Backspace','Delete','Tab','Enter','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','.'];
-    if (!allowed.includes(e.key) && !/^[0-9]$/.test(e.key)) {
-      e.preventDefault();
-    }
-    // Prevent multiple decimals
-    if (e.key === '.' && el.value.includes('.')) {
-      e.preventDefault();
-    }
-  }
-});
-
-// Auto-focus first input on load for Fire Stick keyboard navigation
-window.addEventListener('load', function() {
-  var firstInput = document.querySelector('input[type="text"]');
-  if (firstInput) firstInput.focus();
-});
-
-// Allow Enter key to move to next input field
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') {
-    var inputs = Array.from(document.querySelectorAll('input[type="text"], input[type="text"], input[type="email"], input[type="tel"]'));
-    var current = document.activeElement;
-    var idx = inputs.indexOf(current);
-    if (idx !== -1 && idx < inputs.length - 1) {
-      e.preventDefault();
-      inputs[idx + 1].focus();
-    }
-  }
+  // Auto-focus first field
+  if (fields.length) fields[0].focus();
 });
 </script>
 
