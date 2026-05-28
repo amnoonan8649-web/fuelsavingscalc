@@ -304,6 +304,7 @@
   .msg-error { background: rgba(212,43,43,0.1); border: 1px solid #5A1212; border-radius: 4px; padding: 12px 14px; color: #E85555; font-size: 13px; }
 
 </style>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -552,59 +553,48 @@ function sendEmail() {
   const co2FleetFmt = co2Fleet >= 1000 ? (co2Fleet/1000).toFixed(1)+'K' : Math.round(co2Fleet);
   const co2PerFmt   = r.co2Per  >= 1000 ? (r.co2Per/1000).toFixed(1)+'K'  : Math.round(r.co2Per);
 
-  const body =
-`Hi ${name},
-
-Thanks for stopping by the PDI Power Drives booth! Here is your personalised idle fuel savings estimate for installing PDI Powerhouse Hybrid units on your fleet.
-
-================================
-YOUR INPUTS
-================================
-Locomotive type:    ${r.locoType}
-Fleet size:         ${r.fleet} locomotive${r.fleet>1?'s':''}
-Fuel price:         $${r.fuelCost.toFixed(2)} / gallon
-Electricity cost:   $${r.elecCost.toFixed(2)} / kWh
-Idle hours:         ${r.idleHrs} hrs/week x ${r.idleWks} weeks/year
-${company ? 'Company:            ' + company + '\n' : ''}
-================================
-PER LOCOMOTIVE - ANNUAL
-================================
-Diesel idle cost:   ${fmtM(r.dieselCost)}    (${fmtG(r.dieselGal)})
-Electric cost:      ${fmtM(r.elecCostTotal)}    (${Math.round(r.elecKwh).toLocaleString()} kWh)
-Net saving:         ${fmtM(r.netSaving)}    (${r.pct}% reduction)
-CO2 avoided:        ${co2PerFmt} metric tons
-
-================================
-ENTIRE FLEET (${r.fleet} locomotives) - ANNUAL
-================================
-Fleet diesel spend: ${fmtM(r.dieselCost*r.fleet)}    (${fmtG(r.dieselGal*r.fleet)})
-Fleet electric:     ${fmtM(r.elecCostTotal*r.fleet)}    (${Math.round(r.elecKwh*r.fleet).toLocaleString()} kWh)
-TOTAL SAVINGS:      ${fmtM(r.netSaving*r.fleet)} / year
-Total CO2 avoided:  ${co2FleetFmt} metric tons / year
-
-================================
-
-Results are estimates based on the inputs provided. Actual savings depend on duty cycle, climate, and operating conditions.
-
-To learn more about PDI Powerhouse Hybrid units or schedule a demo, reply to this email or visit powerdrives.com.
-
-Best regards,
-The PDI Power Drives Team
-${phone ? '\nContact phone: ' + phone : ''}
-`;
-
-  const subject = encodeURIComponent('Your PDI Power Drives Fuel Savings Report');
-  const mailtoLink = `mailto:${encodeURIComponent(email)}?subject=${subject}&body=${encodeURIComponent(body)}`;
-
   const btn = document.getElementById('send-btn');
   btn.disabled = true;
-  btn.textContent = 'Opening email client…';
-  window.location.href = mailtoLink;
+  btn.textContent = 'Sending…';
 
-  setTimeout(() => {
-    showMsg('success', `✓ Email client opened — your report is ready to send to ${email}. Just hit send!`);
-    btn.textContent = 'Report ready to send ✓';
-  }, 800);
+  emailjs.init('6lchzT-Ks5ZAvWhXL');
+
+  const templateParams = {
+    from_name:      name,
+    from_email:     email,
+    company:        company || 'N/A',
+    phone:          phone || 'N/A',
+    loco_type:      r.locoType,
+    fleet:          r.fleet,
+    fuel_cost:      '$' + r.fuelCost.toFixed(2) + ' / gallon',
+    elec_cost:      '$' + r.elecCost.toFixed(2) + ' / kWh',
+    idle_hours:     r.idleHrs + ' hrs/week x ' + r.idleWks + ' weeks/year',
+    diesel_cost:    fmtM(r.dieselCost) + ' (' + fmtG(r.dieselGal) + ')',
+    elec_cost_total: fmtM(r.elecCostTotal) + ' (' + Math.round(r.elecKwh).toLocaleString() + ' kWh)',
+    net_saving:     fmtM(r.netSaving) + ' (' + r.pct + '% reduction)',
+    co2:            co2PerFmt + ' metric tons per locomotive / ' + co2FleetFmt + ' metric tons fleet total',
+    fleet_savings:  fmtM(r.netSaving * r.fleet) + ' / year (entire fleet)',
+    to_email:       'a.noonan@powerdrives.com',
+    reply_to:       email
+  };
+
+  // Send to visitor
+  var visitorParams = Object.assign({}, templateParams, { to_email: email });
+  // Send to PDI
+  var pdiParams = Object.assign({}, templateParams, { to_email: 'a.noonan@powerdrives.com' });
+
+  Promise.all([
+    emailjs.send('service_m0elxyb', 'template_ng4477q', visitorParams),
+    emailjs.send('service_m0elxyb', 'template_ng4477q', pdiParams)
+  ]).then(function() {
+    showMsg('success', '✓ Report sent! A copy has been emailed to ' + email + '.');
+    btn.textContent = 'Report sent ✓';
+  }, function(error) {
+    showMsg('error', 'Send failed. Please try again or note your results manually.');
+    btn.disabled = false;
+    btn.textContent = 'Send my report →';
+    console.error('EmailJS error:', error);
+  });
 }
 function showMsg(type, text) {
   const el = document.getElementById('modal-msg');
